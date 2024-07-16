@@ -1,4 +1,7 @@
 //! C23のサブセットを解釈し、x86_64、System V ABIのアセンブリを出力するコンパイラ。
+
+mod strtol;
+
 use std::fmt::Display;
 use clap::Parser;
 
