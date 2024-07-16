@@ -1,4 +1,4 @@
-//! C23のサブセットを解釈し、x86_64、System V ABIのアセンブリを出力するコンパイラ。
+//! C23のサブセットであるUTF-8で書かれたソースを解釈し、x86_64、System V ABIのアセンブリを出力するコンパイラ。
 #![deny(clippy::all)]
 #![warn(clippy::nursery)]
 
