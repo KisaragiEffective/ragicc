@@ -3,7 +3,7 @@
 
 use std::str::FromStr;
 
-fn str_to_fromstr<F: FromStr>(str: &str) -> Result<(F, &str), F::Err> {
+pub(super) fn str_to_fromstr<F: FromStr>(str: &str) -> Result<(F, &str), F::Err> {
     let iter = str.bytes().enumerate();
 
     let mut index = str.len();
