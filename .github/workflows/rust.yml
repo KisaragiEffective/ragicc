@@ -1,0 +1,25 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build_and_test:
+    name: build and test
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4.1.7
+    - name: Build
+      run: cargo build --verbose
+    - name: Run unit tests
+      run: cargo test --verbose
+    - name: Run integrated tests
+      run: |
+        bash e2e/test.sh
