@@ -22,10 +22,15 @@ fn str_to_fromstr<F: FromStr>(str: &str) -> Result<(F, &str), F::Err> {
     digit_part.parse().map(|value| (value, &str[index..]))
 }
 
-#[test]
-fn strto_test() {
-    assert_eq!(str_to_fromstr("123"), Ok((123, "")));
-    assert_eq!(str_to_fromstr("123あいう"), Ok((123, "あいう")));
-    assert!(str_to_fromstr::<i32>("あbc").is_err());
-    assert!(str_to_fromstr::<i32>("").is_err());
+#[cfg(test)]
+mod tests {
+    use crate::strtol::str_to_fromstr;
+
+    #[test]
+    fn strto_test() {
+        assert_eq!(str_to_fromstr("123"), Ok((123, "")));
+        assert_eq!(str_to_fromstr("123あいう"), Ok((123, "あいう")));
+        assert!(str_to_fromstr::<i32>("あbc").is_err());
+        assert!(str_to_fromstr::<i32>("").is_err());
+    }
 }
