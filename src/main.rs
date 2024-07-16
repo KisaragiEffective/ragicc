@@ -7,6 +7,7 @@ mod strtol;
 use std::cell::Cell;
 use std::fmt::Display;
 use std::num::ParseIntError;
+use std::process::ExitCode;
 use clap::Parser;
 
 #[derive(Parser)]
@@ -28,9 +29,24 @@ impl Assembler {
 }
 
 #[derive(Debug)]
-enum LexerError {
+struct LexerError {
+    inner: LexerErrorInner,
+    lexer_occurrence_position: (usize, SourcePosition),
+}
+
+#[derive(Debug)]
+enum LexerErrorInner {
     InvalidInt(ParseIntError),
     InvalidByte(u8),
+}
+
+impl LexerErrorInner {
+    fn message(&self) -> String {
+        match self {
+            Self::InvalidInt(i) => { format!("整数としてパースできません: {i}") }
+            Self::InvalidByte(b) => { format!("無効なバイトです: \\x{b:2x}") }
+        }
+    }
 }
 
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
@@ -68,7 +84,7 @@ impl<'a> Lexer<'a> {
         self.byte_pos += n;
     }
 
-    fn next(&mut self) -> Result<Pointed<Token>, LexerError> {
+    fn next(&mut self) -> Result<Pointed<Token>, LexerErrorInner> {
         let here = self.current;
 
         self.next_token().map(|token| Pointed {
@@ -77,7 +93,7 @@ impl<'a> Lexer<'a> {
         })
     }
 
-    fn next_token(&mut self) -> Result<Token, LexerError> {
+    fn next_token(&mut self) -> Result<Token, LexerErrorInner> {
         let Some(mut current) = self.input.as_bytes().get(self.byte_pos).copied() else {
             return Ok(Token::EndOfFile)
         };
@@ -89,7 +105,7 @@ impl<'a> Lexer<'a> {
 
         match current {
             b'0'..=b'9' => {
-                let (parsed, rest) = strtol::str_to_fromstr::<i32>(self.rest()).map_err(LexerError::InvalidInt)?;
+                let (parsed, rest) = strtol::str_to_fromstr::<i32>(self.rest()).map_err(LexerErrorInner::InvalidInt)?;
                 self.advance_on_same_line(self.input.len() - self.byte_pos - rest.len());
                 Ok(Token::LiteralInt(parsed))
             }
@@ -107,7 +123,7 @@ impl<'a> Lexer<'a> {
                 self.byte_pos += 1;
                 Ok(Token::NewLine)
             }
-            other => Err(LexerError::InvalidByte(other))
+            other => Err(LexerErrorInner::InvalidByte(other))
         }
     }
 
@@ -140,7 +156,11 @@ impl TryFrom<Lexer<'_>> for TokenStream {
         let mut buffer = vec![];
 
         loop {
-            let new = value.next()?;
+            let new = value.next().map_err(|e| LexerError {
+                inner: e,
+                lexer_occurrence_position: (value.byte_pos, value.current)
+            })?;
+            
             if new.data == Token::EndOfFile {
                 break
             }
@@ -164,10 +184,27 @@ enum Token {
     EndOfFile,
 }
 
-fn main() {
+fn main() -> ExitCode {
     let args = Args::parse();
-    let source = args.source;
-    let mut tokens: TokenStream = Lexer::new(&source).try_into().expect("lexer error");
+    let mut tokens: TokenStream = {
+        let source = args.source;
+        let token_map_result = Lexer::new(&source).try_into();
+        let tokens: TokenStream = match token_map_result { 
+            Ok(t) => t,
+            Err(e) => {
+                eprintln!("{}", source);
+                eprintln!("{space}^ {message}", 
+                          space = " ".repeat(e.lexer_occurrence_position.0), 
+                          message = e.inner.message());
+                return 1.into();
+            }
+        };
+        
+        tokens
+    };
+    
+    // TODO: convert some panics to soft error
+    
     let Token::LiteralInt(i) = tokens.next().unwrap().data else {
         panic!("式の最初は数である必要があります");
     };
@@ -202,4 +239,6 @@ fn main() {
     }
 
     assembler.emit("  ret");
+    
+    0.into()
 }
