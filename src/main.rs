@@ -1,4 +1,6 @@
 //! C23のサブセットを解釈し、x86_64、System V ABIのアセンブリを出力するコンパイラ。
+#![deny(clippy::all)]
+#![warn(clippy::nursery)]
 
 mod strtol;
 
